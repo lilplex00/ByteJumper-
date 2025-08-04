@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Byte Jumper</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #0a0a0a;
+      overflow: hidden;
+      font-family: sans-serif;
+      color: white;
+    }
+    canvas {
+      display: block;
+    }
+    #ui {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 10;
+      font-size: 18px;
+    }
+    #gameOver {
+      position: absolute;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 32px;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 20px;
+      display: none;
+      border-radius: 10px;
+      text-align: center;
+    }
+    #restartBtn {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 18px;
+      background: #00ccff;
+      border: none;
+      border-radius: 5px;
+      color: white;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="ui">Score: <span id="score">0</span></div>
+  <div id="gameOver">
+    <div id="endText">Game Over</div>
+    <button id="restartBtn" onclick="restartGame()">Restart</button>
+  </div>
+  <canvas id="game"></canvas>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    let player, platforms, score, gameOver, scrollOffset;
+    const gravity = 0.5;
+    const jumpVelocity = -12;
+
+    function init() {
+      player = {
+        x: canvas.width / 2 - 15,
+        y: canvas.height - 100,
+        width: 30,
+        height: 30,
+        vy: 0,
+        color: "#00ffcc"
+      };
+
+      platforms = [];
+      for (let i = 0; i < 10; i++) {
+        platforms.push({
+          x: Math.random() * (canvas.width - 60),
+          y: canvas.height - i * 80,
+          width: 60,
+          height: 10,
+          type: "normal"
+        });
+      }
+
+      score = 0;
+      scrollOffset = 0;
+      gameOver = false;
+
+      document.getElementById("score").innerText = score;
+      document.getElementById("gameOver").style.display = "none";
+      animate();
+    }
+
+    function drawPlayer() {
+      ctx.fillStyle = player.color;
+      ctx.fillRect(player.x, player.y, player.width, player.height);
+    }
+
+    function drawPlatforms() {
+      for (let p of platforms) {
+        ctx.fillStyle = p.type === "glitch" ? "#ff4444" : "#ffffff";
+        ctx.fillRect(p.x, p.y, p.width, p.height);
+      }
+    }
+
+    function animate() {
+      if (gameOver) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      player.vy += gravity;
+      player.y += player.vy;
+
+      if (player.y < canvas.height / 2) {
+        let delta = canvas.height / 2 - player.y;
+        player.y = canvas.height / 2;
+        for (let p of platforms) p.y += delta;
+        scrollOffset += delta;
+        score = Math.floor(scrollOffset / 10);
+        document.getElementById("score").innerText = score;
+      }
+
+      for (let p of platforms) {
+        if (
+          player.vy > 0 &&
+          player.x + player.width > p.x &&
+          player.x < p.x + p.width &&
+          player.y + player.height >= p.y &&
+          player.y + player.height <= p.y + p.height
+        ) {
+          if (p.type === "glitch") {
+            endGame();
+            return;
+          }
+          player.vy = jumpVelocity;
+        }
+      }
+
+      platforms = platforms.filter(p => p.y < canvas.height + 100);
+      while (platforms.length < 15) {
+        const lastY = platforms[platforms.length - 1].y;
+        platforms.push({
+          x: Math.random() * (canvas.width - 60),
+          y: lastY - 80,
+          width: 60,
+          height: 10,
+          type: Math.random() < 0.1 ? "glitch" : "normal"
+        });
+      }
+
+      drawPlatforms();
+      drawPlayer();
+
+      if (player.y > canvas.height) {
+        endGame();
+        return;
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    function endGame() {
+      gameOver = true;
+      document.getElementById("gameOver").style.display = "block";
+    }
+
+    function restartGame() {
+      init();
+    }
+
+    canvas.addEventListener("touchstart", () => {
+      if (player.vy > 0) player.vy = jumpVelocity;
+    });
+
+    window.addEventListener("keydown", (e) => {
+      if (e.code === "Space" && player.vy > 0) player.vy = jumpVelocity;
+    });
+
+    init();
+  </script>
+</body>
+</html>
